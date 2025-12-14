@@ -3,17 +3,29 @@ name: 构建
 on:
   workflow_dispatch:
     inputs:
+      repo:
+        description: '指定构建的用户仓库（用户名/仓库名）：'
+        required: true
+        default: 'rustdesk/rustdesk-server'
+      branch:
+        description: '指定要构建的版本号或分支名：'
+        required: true
+        default: '1.1.14'
       tag:
         description: '请输入发布的版本号(留空将不发布release)：'
         required: false
         default: ''
+      rust_version:
+        description: '指定 Windows 的 Rust 版本号：'
+        required: true
+        default: '1.81'
       upx:
         description: 'Linux平台编译完成后是否使用upx压缩:'
         required: true
         default: false
         type: boolean
       docker:
-        description: '是否打包 Docker 镜像'
+        description: '是否打包 Docker 镜像：'
         required: true
         default: false
         type: boolean
@@ -51,12 +63,15 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v5
         with:
+          repository: ${{ github.event.inputs.repo }}
+          ref: ${{ github.event.inputs.branch }}
           submodules: recursive
 
       - name: 安装工具链
         env:
           TARGET: ${{ matrix.job.target }}
         run: |
+          rustup target add $TARGET
           case $TARGET in 
               mipsel-unknown-linux-musl)
                 MUSL_URI=mipsel-linux-muslsf-cross
@@ -181,12 +196,14 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v5
         with:
+          repository: ${{ github.event.inputs.repo }}
+          ref: ${{ github.event.inputs.branch }}
           submodules: recursive
 
       - name: 安装工具链
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: "1.81"
+          toolchain: "${{ github.event.inputs.rust_version }}"
           override: true
           default: true
           components: rustfmt
