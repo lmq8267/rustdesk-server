@@ -159,7 +159,7 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
-            cargo update ring
+            cargo update jsonwebtoken rustls --precise 0.21.12
             cargo +nightly build --release --verbose --target $TARGET -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=$TARGET
