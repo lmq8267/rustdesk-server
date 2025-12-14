@@ -1,0 +1,400 @@
+name: 构建
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '请输入发布的版本号(留空将不发布release)：'
+        required: false
+        default: ''
+      upx:
+        description: 'Linux平台编译完成后是否使用upx压缩:'
+        required: true
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  TZ: Asia/Shanghai
+  
+permissions:
+  contents: write
+  actions: write  
+  
+jobs:
+  build:
+
+    name: 构建 - ${{ matrix.job.name }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "amd64",   target: "x86_64-unknown-linux-musl" }
+          - { name: "i386",    target: "i686-unknown-linux-musl" }
+          - { name: "arm64", target: "aarch64-unknown-linux-musl" }
+          - { name: "armv7hf",   target: "armv7-unknown-linux-musleabihf" }
+          - { name: "armv7l",   target: "armv7-unknown-linux-musleabi" }
+          - { name: "armhf",   target: "armv7-unknown-linux-musleabihf" }
+          - { name: "arm",   target: "armv7-unknown-linux-musleabi" }
+          - { name: "mips",   target: "mips-unknown-linux-musl" }
+          - { name: "mipsel",   target: "mipsel-unknown-linux-musl" }
+          #- { name: "amd64fb",    target: "x86_64-unknown-freebsd" }
+
+    steps:
+      
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: 安装工具链
+        env:
+          TARGET: ${{ matrix.job.target }}
+        run: |
+          case $TARGET in 
+              mipsel-unknown-linux-musl)
+                MUSL_URI=mipsel-linux-muslsf-cross
+                URL=mipsel-linux-muslsf
+                ;;
+              aarch64-unknown-linux-musl)
+                MUSL_URI=aarch64-linux-musl-cross
+                ;;
+              armv7-unknown-linux-musleabihf)
+                MUSL_URI=armv7l-linux-musleabihf-cross
+                ;;    
+              armv7-unknown-linux-musleabi)
+                MUSL_URI=armv7m-linux-musleabi-cross
+                ;;   
+              arm-unknown-linux-musleabihf)
+                MUSL_URI=arm-linux-musleabihf-cross
+                ;;    
+              arm-unknown-linux-musleabi)
+                MUSL_URI=arm-linux-musleabi-cross
+                ;;        
+              mips-unknown-linux-musl)
+                MUSL_URI=mips-linux-muslsf-cross
+                URL=mips-linux-muslsf
+                ;;
+              i686-unknown-linux-musl)
+                MUSL_URI=i686-linux-musl-cross
+                ;;
+          esac
+          
+          if [  -n "$MUSL_URI" ]; then
+              mkdir -p /opt/musl_gcc 
+              wget -c https://github.com/lmq8267/Toolchain/releases/download/musl-cross/$MUSL_URI.tgz -P /opt/musl_gcc/
+              tar zxf /opt/musl_gcc/$MUSL_URI.tgz -C /opt/musl_gcc/
+              sudo ln -s /opt/musl_gcc/$MUSL_URI/bin/*gcc /usr/bin/
+          fi
+          if [[ $TARGET =~ ^mips.*$ ]]; then
+              # mips平台使用nightly版本
+              cd /opt/musl_gcc/${URL}-cross/lib/gcc/${URL}/11.2.1
+              cp libgcc_eh.a libunwind.a
+              rustup toolchain install nightly-x86_64-unknown-linux-gnu
+              rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+              RUST_LIB_SRC=$HOME/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/
+              if [[ -f $RUST_LIB_SRC/library/Cargo.lock && ! -f $RUST_LIB_SRC/Cargo.lock ]]; then 
+                 cp -f $RUST_LIB_SRC/library/Cargo.lock $RUST_LIB_SRC/Cargo.lock
+              fi 
+          fi
+          rustup -V
+          
+          cat >>~/.cargo/config <<EOF
+          [target.x86_64-unknown-linux-musl]
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.aarch64-unknown-linux-musl]
+          linker = "aarch64-linux-musl-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.armv7-unknown-linux-musleabihf]
+          linker = "armv7l-linux-musleabihf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.armv7-unknown-linux-musleabi]
+          linker = "armv7m-linux-musleabi-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.arm-unknown-linux-musleabihf]
+          linker = "arm-linux-musleabihf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]   
+          [target.arm-unknown-linux-musleabi]
+          linker = "arm-linux-musleabi-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.mipsel-unknown-linux-musl]
+          linker = "mipsel-linux-muslsf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols","-C", "link-arg=-static",
+          "-C", "relocation-model=static","-C", "link-arg=-no-pie","--cfg", "compiler_builtins_no_debug",
+          "-L", "/opt/musl_gcc/mipsel-linux-muslsf-cross/mipsel-linux-muslsf/lib",
+          "-L", "/opt/musl_gcc/mipsel-linux-muslsf-cross/lib/gcc/mipsel-linux-muslsf/11.2.1"]
+          [target.mips-unknown-linux-musl]
+          linker = "mips-linux-muslsf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols","-C", "link-arg=-static",
+          "-C", "relocation-model=static","-C", "link-arg=-no-pie","--cfg", "compiler_builtins_no_debug",
+          "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/mips-linux-muslsf/lib",
+          "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/lib/gcc/mips-linux-muslsf/11.2.1"]  
+          [target.i686-unknown-linux-musl]
+          linker = "i686-linux-musl-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]   
+          EOF
+
+      - name: 编译
+        run: |
+          if [[ $TARGET =~ ^mips.*$ ]]; then
+            cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
+          else
+            carogo build --release --all-features --target=${{ matrix.job.target }}
+          fi
+
+      - name: 赋予执行权限
+        run: chmod -v a+x target/${{ matrix.job.target }}/release/*
+
+      - name: 安装 UPX
+        if: github.event.inputs.upx == 'true'
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          version: v4.2.4
+          install-only: true
+
+      - name: UPX压缩
+        if: github.event.inputs.upx == 'true'
+        run: upx --lzma --best target/${{ matrix.job.target }}/release/* || true
+
+      - name: 上传文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-linux-${{ matrix.job.name }}
+          path: |
+            target/${{ matrix.job.target }}/release/hbbr
+            target/${{ matrix.job.target }}/release/hbbs
+            target/${{ matrix.job.target }}/release/rustdesk-utils
+          if-no-files-found: error
+
+  build-win:
+    name: 构建 - windows
+    runs-on: windows-2022
+
+    steps:
+      
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: 安装工具链
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: "1.81"
+          override: true
+          default: true
+          components: rustfmt
+          profile: minimal
+          target: x86_64-pc-windows-msvc
+
+      - name: 构建
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features --target=x86_64-pc-windows-msvc
+          use-cross: true
+
+      - name: 安装 NSIS
+        run: |
+          iwr -useb get.scoop.sh -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
+          scoop update
+          scoop bucket add extras
+          scoop install nsis
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: 构建界面浏览器文件
+        run: |
+          npm i
+          npm run build
+        working-directory: ./ui/html
+
+      - name: 构建界面文件
+        run: |
+          rustup default nightly
+          cargo build --release
+          xcopy /y ..\target\x86_64-pc-windows-msvc\release\*.exe setup\bin\
+          xcopy /y target\release\*.exe setup\
+          mkdir setup\logs
+          makensis /V1 setup.nsi
+          mkdir SignOutput
+          mv RustDeskServer.Setup.exe SignOutput\
+          mv ..\target\x86_64-pc-windows-msvc\release\*.exe SignOutput\
+        working-directory: ./ui
+
+      - name: 上传文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-windows-x86_64
+          path: |
+            ui\SignOutput\hbbr.exe
+            ui\SignOutput\hbbs.exe
+            ui\SignOutput\rustdesk-utils.exe
+            ui\SignOutput\RustDeskServer.Setup.exe
+          if-no-files-found: error
+
+  release:
+
+    name: 发布 release
+    if: ${{ github.event.inputs.tag != '' }}
+    needs: 
+      - build
+      - build-win
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { os: "linux", name: "amd64", suffix: "" }
+          - { os: "linux", name: "arm64v8", suffix: "" }
+          - { os: "linux", name: "armv7", suffix: "" }
+          - { os: "linux", name: "i386", suffix: "" }
+          #- { os: "linux", name: "amd64fb", suffix: "" }
+          - { os: "windows", name: "x86_64", suffix: "-unsigned" }
+          
+    steps:
+
+      - name: 下载 (${{ matrix.job.os }} - ${{ matrix.job.name }}) 文件
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-${{ matrix.job.os }}-${{ matrix.job.name }}
+          path: ${{ matrix.job.name }}
+
+      - name: 赋予执行权限
+        run: chmod -v a+x ${{ matrix.job.name }}/*
+
+      - name: zip打包 (${{ matrix.job.os }} - ${{ matrix.job.name }})
+        run: |
+          sudo apt update
+          DEBIAN_FRONTEND=noninteractive sudo apt install -y zip
+          zip ${{ matrix.job.name }}/rustdesk-server-${{ matrix.job.os }}-${{ matrix.job.name }}${{ matrix.job.suffix }}.zip ${{ matrix.job.name }}/*
+          echo "build_time=$(date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
+
+      - name: 发布 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+           > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ github.event.inputs.tag }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)
+           
+          tag_name: ${{ github.event.inputs.tag }}
+          files: ${{ matrix.job.name }}/rustdesk-server-${{ matrix.job.os }}-${{ matrix.job.name }}${{ matrix.job.suffix }}.zip
+            
+
+  docker:
+
+    name: Docker 推送 - ${{ matrix.job.name }}
+    needs: build
+    if: ${{ secrets.DOCKERHUB_TOKEN != '' && github.event.inputs.tag != '' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "amd64",   docker_platform: "linux/amd64",  s6_platform: "x86_64" }
+          - { name: "arm64v8", docker_platform: "linux/arm64",  s6_platform: "aarch64" }
+          - { name: "armv7",   docker_platform: "linux/arm/v7", s6_platform: "armhf" }
+          - { name: "i386",    docker_platform: "linux/386",    s6_platform: "i686" }
+
+    steps:
+
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+        
+      - name: 下载二进制程序
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-linux-${{ matrix.job.name }}
+          path: docker/rootfs/usr/bin
+
+      - name: 赋予执行权限
+        run: chmod -v a+x docker/rootfs/usr/bin/*
+
+      - name: 初始化虚拟环境
+        uses: docker/setup-qemu-action@v3
+      
+      - name: 初始化 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 打包并推送镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: "./docker"
+          platforms: ${{ matrix.job.docker_platform }}
+          push: true
+          provenance: false
+          tags: |
+            docker.io/${{ github.repository_owner }}/rustdesk-server:latest
+            docker.io/${{ github.repository_owner }}/rustdesk-server:${{ github.event.inputs.tag }}
+
+  deb-package:
+
+    name: 打包 debian 包 - ${{ matrix.job.name }}
+    needs: build
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: "amd64",   crossbuild_package: "" }
+          - { name: "arm64", crossbuild_package: "crossbuild-essential-arm64" }
+          - { name: "armv7",   crossbuild_package: "crossbuild-essential-armhf" }
+          - { name: "i386",    crossbuild_package: "crossbuild-essential-i386" }
+
+    steps:
+
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: 设置虚拟环境
+        uses: docker/setup-qemu-action@v2
+
+      - name: 创建打包环境
+        run: |
+          sudo apt update
+          DEBIAN_FRONTEND=noninteractive sudo apt install -y devscripts build-essential debhelper pkg-config ${{ matrix.job.crossbuild_package }}
+          mkdir -p debian-build/${{ matrix.job.name }}/bin
+
+      - name: 下载二进制程序
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-linux-${{ matrix.job.name }}
+          path: debian-build/${{ matrix.job.name }}/bin
+
+      - name: 打包 ${{ matrix.job.name }} 
+        run: |
+          chmod -v a+x debian-build/${{ matrix.job.name }}/bin/*
+          cp -vr debian systemd debian-build/${{ matrix.job.name }}/
+          cat debian/control.tpl | sed 's/{{ ARCH }}/${{ matrix.job.name }}/' > debian-build/${{ matrix.job.name }}/debian/control
+          cd debian-build/${{ matrix.job.name }}/
+          debuild -i -us -uc -b -a${{ matrix.job.name }}
+          echo "build_time=$(date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
+
+      - name: 发布 Release
+        if: ${{ github.event.inputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+           > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ github.event.inputs.tag }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)
+           
+          tag_name: ${{ github.event.inputs.tag }}
+          files: |
+            debian-build/rustdesk-server-hbbr_*_${{ matrix.job.debian_platform }}.deb
+            debian-build/rustdesk-server-hbbs_*_${{ matrix.job.debian_platform }}.deb
+            debian-build/rustdesk-server-utils_*_${{ matrix.job.debian_platform }}.deb
