@@ -155,7 +155,7 @@ jobs:
       - name: 编译
         run: |
           if [[ $TARGET =~ ^mips.*$ ]]; then
-            cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
+            cargo +nightly build --release --target ${{ matrix.job.target }} -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=${{ matrix.job.target }}
           fi
