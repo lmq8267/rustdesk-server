@@ -113,6 +113,7 @@ jobs:
                  cp -f $RUST_LIB_SRC/library/Cargo.lock $RUST_LIB_SRC/Cargo.lock
               fi
           else
+            sudo apt-get update && sudo apt-get install clang libc6-dev-i386 musl-tools libboost-all-dev libc6-dev -y
             rustup target add $TARGET
           fi
           rustup -V
