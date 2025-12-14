@@ -163,9 +163,10 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
+            sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "10"/' Cargo.toml 
             rm Cargo.lock 
             cargo update
-            cargo +nightly build --release --verbose --target $TARGET -Z build-std=std,panic_abort --all-features
+            cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=$TARGET
           fi
