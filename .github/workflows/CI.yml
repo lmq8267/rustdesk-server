@@ -163,9 +163,8 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
-            sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "9"/' Cargo.toml 
+            #sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "9"/' Cargo.toml 
             sed -i 's/sqlx = { version = "0.6"/sqlx = { version = "0.7"/' Cargo.toml
-            sed -i '/^\[dependencies\]/i\[patch.crates-io]\nrustls-platform-verifier = { version = "=0.5.3" }' Cargo.toml
             rm Cargo.lock 
             cargo update
             cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
