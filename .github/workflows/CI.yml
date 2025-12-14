@@ -165,11 +165,7 @@ jobs:
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
             sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "10"/' Cargo.toml 
             sed -i 's/sqlx = { version = "0.6"/sqlx = { version = "0.8"/' Cargo.toml
-            cat >> Cargo.toml <<EOF  
-        
-            [patch.crates-io]  
-            rustls-platform-verifier = "0.6.2"  
-            EOF
+            sed -i '/^\[dependencies\]/i\[patch.crates-io]\nrustls-platform-verifier = "0.6.2"' Cargo.toml
             rm Cargo.lock 
             cargo update
             cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
