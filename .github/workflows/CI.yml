@@ -95,9 +95,6 @@ jobs:
               i686-unknown-linux-musl)
                 MUSL_URI=i686-linux-musl-cross
                 ;;
-              x86_64-unknown-linux-musl)
-                MUSL_URI=x86_64-linux-musl-cross
-                ;;
           esac
           
           if [  -n "$MUSL_URI" ]; then
@@ -125,7 +122,6 @@ jobs:
           
           cat >>~/.cargo/config <<EOF
           [target.x86_64-unknown-linux-musl]
-          linker = "x86_64-linux-musl-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.aarch64-unknown-linux-musl]
           linker = "aarch64-linux-musl-gcc"
