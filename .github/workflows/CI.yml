@@ -42,7 +42,7 @@ jobs:
   build:
 
     name: 构建 - ${{ matrix.job.name }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -267,7 +267,7 @@ jobs:
     needs: 
       - build
       - build-win
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
