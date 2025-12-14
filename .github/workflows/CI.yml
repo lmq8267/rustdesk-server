@@ -15,10 +15,6 @@ on:
         description: '请输入发布的版本号(留空将不发布release)：'
         required: false
         default: ''
-      rust_version:
-        description: '指定 Windows 的 Rust 版本号：'
-        required: true
-        default: '1.81'
       upx:
         description: 'Linux平台编译完成后是否使用upx压缩:'
         required: true
@@ -42,7 +38,7 @@ jobs:
   build:
 
     name: 构建 - ${{ matrix.job.name }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -71,7 +67,6 @@ jobs:
         env:
           TARGET: ${{ matrix.job.target }}
         run: |
-          rustup target add $TARGET
           case $TARGET in 
               mipsel-unknown-linux-musl)
                 MUSL_URI=mipsel-linux-muslsf-cross
@@ -116,7 +111,9 @@ jobs:
               RUST_LIB_SRC=$HOME/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/
               if [[ -f $RUST_LIB_SRC/library/Cargo.lock && ! -f $RUST_LIB_SRC/Cargo.lock ]]; then 
                  cp -f $RUST_LIB_SRC/library/Cargo.lock $RUST_LIB_SRC/Cargo.lock
-              fi 
+              fi
+          else
+            rustup target add $TARGET
           fi
           rustup -V
           
@@ -203,7 +200,6 @@ jobs:
       - name: 安装工具链
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: "${{ github.event.inputs.rust_version }}"
           override: true
           default: true
           components: rustfmt
@@ -267,7 +263,7 @@ jobs:
     needs: 
       - build
       - build-win
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -318,7 +314,7 @@ jobs:
     name: Docker 推送 - ${{ matrix.job.name }}
     needs: build
     if: ${{ github.event.inputs.tag != '' && github.event.inputs.docker == true }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -371,7 +367,7 @@ jobs:
 
     name: 打包 debian 包 - ${{ matrix.job.name }}
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
