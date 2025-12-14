@@ -94,6 +94,7 @@ jobs:
                 ;;
               i686-unknown-linux-musl)
                 MUSL_URI=i686-linux-musl-cross
+                ;;
               x86_64-unknown-linux-musl)
                 MUSL_URI=x86_64-linux-musl-cross
                 ;;
