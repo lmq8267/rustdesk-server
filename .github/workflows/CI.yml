@@ -159,7 +159,8 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
-            cargo update ring --precise 0.17.3
+            rm Cargo.lock 
+            cargo update
             cargo +nightly build --release --verbose --target $TARGET -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=$TARGET
