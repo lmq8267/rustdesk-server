@@ -154,8 +154,10 @@ jobs:
           EOF
 
       - name: 编译
+        env:
+          TARGET: ${{ matrix.job.target }}
         run: |
-          if [[ $TARGET =~ ^mips.*$ ]]; then
+          if [[  "$TARGET" =~ ^mips.*$ ]]; then
             cargo +nightly build --release --target ${{ matrix.job.target }} -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=${{ matrix.job.target }}
