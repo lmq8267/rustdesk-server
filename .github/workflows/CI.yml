@@ -50,8 +50,8 @@ jobs:
           - { name: "armv7l",   target: "armv7-unknown-linux-musleabi" }
           - { name: "armhf",   target: "armv7-unknown-linux-musleabihf" }
           - { name: "arm",   target: "armv7-unknown-linux-musleabi" }
-          - { name: "mips",   target: "mips-unknown-linux-musl" }
-          - { name: "mipsel",   target: "mipsel-unknown-linux-musl" }
+          #- { name: "mips",   target: "mips-unknown-linux-musl" }
+          #- { name: "mipsel",   target: "mipsel-unknown-linux-musl" }
           #- { name: "amd64fb",    target: "x86_64-unknown-freebsd" }
 
     steps:
@@ -163,10 +163,9 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
-            sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "10"/' Cargo.toml 
-            sed -i 's/sqlx = { version = "0.6"/sqlx = { version = "0.8"/' Cargo.toml
-            sed -i 's/rustls-platform-verifier = "0.3.1"/rustls-platform-verifier = "=0.5.3"/' libs/hbb_common/Cargo.toml
-            cat libs/hbb_common/Cargo.toml
+            # sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "10"/' Cargo.toml 
+            # sed -i 's/sqlx = { version = "0.6"/sqlx = { version = "0.8"/' Cargo.toml
+            # sed -i 's/rustls-platform-verifier = "0.3.1"/rustls-platform-verifier = "=0.5.3"/' libs/hbb_common/Cargo.toml
             rm Cargo.lock 
             cargo update
             cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
