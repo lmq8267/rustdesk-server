@@ -157,7 +157,7 @@ jobs:
           if [[ $TARGET =~ ^mips.*$ ]]; then
             cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
           else
-            carogo build --release --all-features --target=${{ matrix.job.target }}
+            cargo build --release --all-features --target=${{ matrix.job.target }}
           fi
 
       - name: 赋予执行权限
@@ -200,6 +200,7 @@ jobs:
       - name: 安装工具链
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           override: true
           default: true
           components: rustfmt
