@@ -67,6 +67,7 @@ jobs:
         env:
           TARGET: ${{ matrix.job.target }}
         run: |
+          sudo apt-get update && sudo apt-get install clang llvm libc6-dev-i386 musl-tools libboost-all-dev libc6-dev -y
           case $TARGET in 
               mipsel-unknown-linux-musl)
                 MUSL_URI=mipsel-linux-muslsf-cross
@@ -113,7 +114,6 @@ jobs:
                  cp -f $RUST_LIB_SRC/library/Cargo.lock $RUST_LIB_SRC/Cargo.lock
               fi
           else
-            sudo apt-get update && sudo apt-get install clang libc6-dev-i386 musl-tools libboost-all-dev libc6-dev -y
             rustup target add $TARGET
           fi
           rustup -V
