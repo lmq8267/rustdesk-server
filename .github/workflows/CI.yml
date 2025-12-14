@@ -165,7 +165,8 @@ jobs:
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
             #sed -i 's/jsonwebtoken = "8"/jsonwebtoken = "9"/' Cargo.toml 
             sed -i 's/sqlx = { version = "0.6"/sqlx = { version = "0.7"/' Cargo.toml
-            sed -i 's/rustls-platform-verifier = "0.3.4"/rustls-platform-verifier = "0.5.3"/' libs/hbb_common/Cargo.toml
+            sed -i 's/rustls-platform-verifier = "0.3.4"/# rustls-platform-verifier = "0.3.4"/' libs/hbb_common/Cargo.toml
+            cat libs/hbb_common/Cargo.toml
             rm Cargo.lock 
             cargo update
             cargo +nightly build --release --target $TARGET -Z build-std=std,panic_abort --all-features
