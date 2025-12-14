@@ -146,6 +146,7 @@ jobs:
           [target.mips-unknown-linux-musl]
           linker = "mips-linux-muslsf-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols","-C", "link-arg=-static",
+          "-C", "relocation-model=static","-C", "link-arg=-no-pie","--cfg", "compiler_builtins_no_debug",
           "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/mips-linux-muslsf/lib",
           "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/lib/gcc/mips-linux-muslsf/11.2.1"]  
           [target.i686-unknown-linux-musl]
@@ -158,6 +159,7 @@ jobs:
           TARGET: ${{ matrix.job.target }}
         run: |
           if [[  "$TARGET" =~ ^mips.*$ ]]; then
+            cargo update ring
             cargo +nightly build --release --verbose --target $TARGET -Z build-std=std,panic_abort --all-features
           else
             cargo build --release --all-features --target=$TARGET
